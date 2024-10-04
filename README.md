@@ -69,7 +69,7 @@ https://github.com/user-attachments/assets/88b98128-636e-43bc-a419-b1b1403c2055
 
 - 公开MiniMind模型代码（包含Dense和MoE模型）、Pretrain、SFT指令微调、LoRA微调、DPO偏好优化的全过程代码、数据集和来源。
 - 兼容`transformers`、`accelerate`、`trl`、`peft`等流行框架。
-- 训练支持单机单卡、单机多卡(DDP、DeepSpeed)训练。训练过程中支持在任意位置停止，及在任意位置继续训练。
+- 训练支持单机单卡、单机多卡(DDP、DeepSpeed)训练，使用wandb可视化训练流程。支持在任意位置停止，及在任意位置继续训练。
 - 在Ceval数据集上进行模型测试的代码。
 - 实现Openai-Api基本的chat接口，便于集成到第三方ChatUI使用（FastGPT、Open-WebUI等）。
 
@@ -78,7 +78,18 @@ https://github.com/user-attachments/assets/88b98128-636e-43bc-a419-b1b1403c2055
 ### 👉**最近更新**
 
 <details close> 
-<summary> <b>2024-09-17 (new🎉)</b> </summary>
+<summary> <b>2024-09-27</b> </summary>
+
+- 👉09-27更新pretrain数据集的预处理方式，为了保证文本完整性，放弃预处理成.bin训练的形式（轻微牺牲训练速度）。
+
+- 目前pretrain预处理后的文件命名为：pretrain_data.csv。
+
+- 删除了一些冗余的代码。
+
+</details>
+
+<details close> 
+<summary> <b>2024-09-17</b> </summary>
 
 - 更新minimind-v1-moe模型
 
@@ -213,6 +224,14 @@ streamlit run fast_inference.py
     deepspeed --master_port 29500 --num_gpus=N 3-full_sft.py
     ```
 
+* 记录训练过程
+    ```bash
+    torchrun --nproc_per_node N 1-pretrain.py --use_wandb
+    # and
+    python 1-pretrain.py --use_wandb
+    ```
+    通过添加`--use_wandb`参数，可以记录训练过程，训练完成后，可以在wandb网站上查看训练过程。通过修改`wandb_project`和`wandb_run_name`参数，可以指定项目名称和运行名称。
+
 # 📌 Data sources
 
 - 🤖 分词器：nlp中的Tokenizer类似于词典，将单词从自然语言通过“词典”映射到0,1,36这样的数字，可以理解为数字就代表了单词在“词典”中的页码。
@@ -233,8 +252,7 @@ streamlit run fast_inference.py
       <tr><td>minimind tokenizer</td><td>6,400</td><td>自定义</td></tr>
     </table>
 
-  > [!TIP]
-  > 2024-09-17更新：为了防止过去的版本歧义&控制体积，minimind所有模型均使用minimind_tokenizer分词，废弃所有mistral_tokenizer版本。
+  > 👉2024-09-17更新：为了防止过去的版本歧义&控制体积，minimind所有模型均使用minimind_tokenizer分词，废弃所有mistral_tokenizer版本。
 
   > 尽管minimind_tokenizer长度很小，编解码效率弱于qwen2、glm等中文友好型分词器。
   > 但minimind模型选择了自己训练的minimind_tokenizer作为分词器，以保持整体参数轻量，避免编码层和计算层占比失衡，头重脚轻，因为minimind的词表大小只有6400。
@@ -292,8 +310,7 @@ streamlit run fast_inference.py
 | **【tokenizer训练集】** | [HuggingFace](https://huggingface.co/datasets/jingyaogong/minimind_dataset/tree/main) / [百度网盘](https://pan.baidu.com/s/1yAw1LVTftuhQGAC1Y9RdYQ?pwd=6666)                                                                   |
 | **【Pretrain数据】**   | [Seq-Monkey官方](http://share.mobvoi.com:5000/sharing/O91blwPkY)  / [百度网盘](https://pan.baidu.com/s/1-Z8Q37lJD4tOKhyBs1D_6Q?pwd=6666) / [HuggingFace](https://huggingface.co/datasets/jingyaogong/minimind_dataset/tree/main) |
 | **【SFT数据】**        | [匠数大模型SFT数据集](https://www.modelscope.cn/datasets/deepctrl/deepctrl-sft-data/resolve/master/sft_data_zh.jsonl)                                                                                                              |
-| **【DPO数据1】**       | [活字数据集1](https://huggingface.co/datasets/Skepsun/huozi_rlhf_data_json)                                                                                                                                                     |
-| **【DPO数据2】**       | [活字数据集2](https://huggingface.co/datasets/beyond/rlhf-reward-single-round-trans_chinese)                                                                                                                                    |
+| **【DPO数据】**        | [Huggingface](https://huggingface.co/datasets/jingyaogong/minimind_dataset/tree/main/dpo)                                                                                                                                  |
 
 # 📌 Model
 
@@ -531,7 +548,8 @@ MobileLLM提出架构的深度比宽度更重要，「深而窄」的「瘦长�
 * minimind系列（ABC）的排序符合直觉，minimind-v1(0.1B)评分最高，常识性问题的回答基本没有错误和幻觉。
     * 出乎意料的是，minimind-v1-small(0.02B)仅有26M参数，却可以接近minimind-v1(0.1B)的表现。
     * minimind-v1(0.1B)的sft轮数`epochs`仅有不到2，偷懒提前kill腾出资源给小模型，0.1B没有得到充分训练的情况下依然做到了最强，其实还是底大一级压死人。
-    * minimind-v1-moe(0.1B)表现只比minimind-v1-small(0.02B)略好，同样是因为偷懒早停腾出资源做其它训练了，但是MoE模型这种稀疏多Experts模式需要的训练轮次需要酌情更高，让所有FFN层专家得到路由的激活充分训练，在目前epochs设置为3时训练的还不够充足。
+    * minimind-v1-moe(0.1B)表现只比minimind-v1-small(0.02B)
+      略好，同样是因为偷懒早停腾出资源做其它训练了，但是MoE模型这种稀疏多Experts模式需要的训练轮次需要酌情更高，让所有FFN层专家得到路由的激活充分训练，在目前epochs设置为3时训练的还不够充足。
       minimind在早期实验验证阶段在Yi-Tokenizer上试验过moe的充分训练版本，可以做到比dense小模型表现肉眼可见地更好。此部分可能需要留给日后腾出服务器再训练并更新v2、v3版本。
 
 * E模型的回答肉眼看起来是非常不错的，尽管存在些许幻觉瞎编的情况。但GPT-4o和Deepseek的评分都一致认为它“信息过度冗长，且有重复内容，存在幻觉”。
@@ -673,7 +691,6 @@ minimind模型本身没有使用较大的数据集训练，也没有针对回答
 > 任何分享都视作独一无二的，所有尝试都具有价值，并受到鼓励<br/>
 > 这些贡献都会被及时发现并整理在鸣谢列表中，再次感谢所有支持！
 
-
 ## 🤝[贡献者](https://github.com/jingyaogong/minimind/graphs/contributors)
 
 <!--
@@ -688,6 +705,8 @@ minimind模型本身没有使用较大的数据集训练，也没有针对回答
 &nbsp;
 <a href="https://github.com/chuanzhubin"><img src="https://avatars.githubusercontent.com/u/2813798" width="70px" height="70px"/></a>
 &nbsp;
+<a href="https://github.com/iomgaa-ycz"><img src="https://avatars.githubusercontent.com/u/124225682" width="70px" height="70px"/></a>
+&nbsp;
 
 ## 😊鸣谢
 
@@ -696,6 +715,9 @@ minimind模型本身没有使用较大的数据集训练，也没有针对回答
 
 <a href="https://github.com/chuanzhubin"><b>@chuanzhubin</b></a>:
 <a href="https://github.com/jingyaogong/minimind/pull/34">🔗代码逐行注释</a>
+
+<a href="https://github.com/WangRongsheng"><b>@WangRongsheng</b></a>:
+<a href="https://github.com/jingyaogong/minimind/issues/39">🔗大型数据集预处理</a>
 
 <details close> 
 <summary> <b>参考链接 & 感谢以下优秀的论文或项目</b> </summary>
@@ -715,7 +737,6 @@ minimind模型本身没有使用较大的数据集训练，也没有针对回答
 - [https://github.com/HqWu-HITCS/Awesome-Chinese-LLM](https://github.com/HqWu-HITCS/Awesome-Chinese-LLM)
 
 </details>
-
 
 ## 🫶支持者
 
@@ -740,7 +761,6 @@ minimind模型本身没有使用较大的数据集训练，也没有针对回答
   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=jingyaogong/minimind&type=Date"/>
   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=jingyaogong/minimind&type=Date"/>
 </picture>
-
 
 # License
 

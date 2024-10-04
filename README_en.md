@@ -75,9 +75,7 @@ The project includes:
 - Public MiniMind model code (including Dense and MoE models), code for Pretrain, SFT instruction fine-tuning, LoRA
   fine-tuning, and DPO preference optimization, along with datasets and sources.
 - Compatibility with popular frameworks such as `transformers`, `accelerate`, `trl`, and `peft`.
-- Training support for single-GPU and multi-GPU setups(DDP、DeepSpeed). The training process allows for stopping and
-  resuming at any
-  point.
+- Training support for single-GPU and multi-GPU setups(DDP、DeepSpeed), Use wandb to visualize the training process. The training process allows for stopping and resuming at any point.
 - Code for testing the model on the Ceval dataset.
 - Implementation of a basic chat interface compatible with OpenAI's API, facilitating integration into third-party Chat
   UIs (such as FastGPT, Open-WebUI, etc.).
@@ -85,6 +83,17 @@ The project includes:
 We hope this open-source project helps LLM beginners get started quickly!
 
 ### 👉**Recent Updates**
+
+<details close> 
+<summary> <b>2024-09-27</b> </summary>
+
+- 👉Updated the preprocessing method for the pretrain dataset on 09-27 to ensure text integrity, opting to abandon the preprocessing into .bin training format (slightly sacrificing training speed).
+
+- The current filename for the pretrain data after preprocessing is: pretrain_data.csv.
+
+- Removed some redundant code.
+
+</details>
 
 <details close> 
 <summary> <b>2024-09-17 (new🎉)</b> </summary>
@@ -236,6 +245,13 @@ git clone https://github.com/jingyaogong/minimind.git
     # and
     deepspeed --master_port 29500 --num_gpus=N 3-full_sft.py
     ```
+* Record the training process
+    ```bash
+    torchrun --nproc_per_node N 1-pretrain.py --use_wandb
+    # and
+    python 1-pretrain.py --use_wandb
+    ```
+    By adding the `--use_wandb` parameter, you can record the training process. After training is complete, you can view the training process on the wandb website. You can specify the project name and run name by modifying the `wandb_project` and `wandb_run_name` parameters.
 
 # 📌 Data sources
 
@@ -266,8 +282,7 @@ git clone https://github.com/jingyaogong/minimind.git
       <tr><td>minimind tokenizer</td><td>6,400</td><td>Custom</td></tr>
     </table>
 
-  > [!IMPORTANT]
-  > Update on 2024-09-17: To avoid ambiguity from previous versions and control the model size, all Minimind models now
+  > 👉Update on 2024-09-17: To avoid ambiguity from previous versions and control the model size, all Minimind models now
   use the Minimind_tokenizer for tokenization, and all versions of the Mistral_tokenizer have been deprecated.
 
   > Although the Minimind_tokenizer has a small length and its encoding/decoding efficiency is weaker compared to
@@ -326,8 +341,7 @@ git clone https://github.com/jingyaogong/minimind.git
 | **[tokenizer Data]**      | [HuggingFace](https://huggingface.co/datasets/jingyaogong/minimind_dataset/tree/main) / [Baidu](https://pan.baidu.com/s/1yAw1LVTftuhQGAC1Y9RdYQ?pwd=6666) |
 | **[Pretrain Data]**       | [Seq-Monkey General Text Dataset](http://share.mobvoi.com:5000/sharing/O91blwPkY) / [Baidu](https://pan.baidu.com/s/114F1k3eksiWCOQLvaT3RYQ?pwd=6666)     |
 | **[SFT Data]**            | [Jiangshu Large Model SFT Dataset](https://www.modelscope.cn/datasets/deepctrl/deepctrl-sft-data/resolve/master/sft_data_zh.jsonl)                        |
-| **[DPO Data]**            | [Huozi Dataset 1](https://huggingface.co/datasets/Skepsun/huozi_rlhf_data_json)                                                                           |
-| **[DPO Data]**            | [Huozi Dataset 2](https://huggingface.co/datasets/beyond/rlhf-reward-single-round-trans_chinese)                                                          |
+| **[DPO Data]**            | [Huggingface](https://huggingface.co/datasets/jingyaogong/minimind_dataset/tree/main/dpo)                                                                                                                                  |
 
 # 📌 Model
 
@@ -480,8 +494,8 @@ better with the scaling law for small models.
 | Model Name        | params | Config                      | pretrain_model                                                  | single_sft_model                                               | multi_sft_model                                                |
 |-------------------|--------|-----------------------------|-----------------------------------------------------------------|----------------------------------------------------------------|----------------------------------------------------------------|
 | minimind-v1-small | 26M    | d_model=512<br/>n_layers=8  | [URL](https://pan.baidu.com/s/1wP_cAIc8cgaJ6CxUmR9ECQ?pwd=6666) | [URL](https://pan.baidu.com/s/1_COe0FQRDmeapSsvArahCA?pwd=6666) | [URL](https://pan.baidu.com/s/1GsGsWSL0Dckl0YPRXiBIFQ?pwd=6666) |
-| minimind-v1-moe   | 4×26M  | d_model=512<br/>n_layers=8  | [URL](https://pan.baidu.com/s/1IZdkzPRhbZ_bSsRL8vInjg?pwd=6666)  | [URL](https://pan.baidu.com/s/1tqB-GMvuiGQBvEl-yZ-oBw?pwd=6666) | [URL](https://pan.baidu.com/s/1GHJ2T4904EcT1u8l1rVqtg?pwd=6666) |
-| minimind-v1       | 108M   | d_model=768<br/>n_layers=16 | -                                                               | [URL](https://pan.baidu.com/s/1p713loS7EfwHQf3G9eYI3Q?pwd=6666) | [URL](https://pan.baidu.com/s/12iHGpAs6R0kqsOnGtgK6vQ?pwd=6666) |
+| minimind-v1-moe   | 4×26M  | d_model=512<br/>n_layers=8  | [URL](https://pan.baidu.com/s/1IZdkzPRhbZ_bSsRL8vInjg?pwd=6666) | [URL](https://pan.baidu.com/s/1tqB-GMvuiGQBvEl-yZ-oBw?pwd=6666) | [URL](https://pan.baidu.com/s/1GHJ2T4904EcT1u8l1rVqtg?pwd=6666) |
+| minimind-v1       | 108M   | d_model=768<br/>n_layers=16 | [URL](https://pan.baidu.com/s/1B60jYo4T8OmJI0ooqsixaA?pwd=6666) | [URL](https://pan.baidu.com/s/1p713loS7EfwHQf3G9eYI3Q?pwd=6666) | [URL](https://pan.baidu.com/s/12iHGpAs6R0kqsOnGtgK6vQ?pwd=6666) |
 
 ---
 
@@ -757,6 +771,8 @@ your model with third-party UIs, such as fastgpt, OpenWebUI, etc.
 &nbsp;
 <a href="https://github.com/chuanzhubin"><img src="https://avatars.githubusercontent.com/u/2813798" width="70px" height="70px"/></a>
 &nbsp;
+<a href="https://github.com/iomgaa-ycz"><img src="https://avatars.githubusercontent.com/u/124225682" width="70px" height="70px"/></a>
+&nbsp;
 
 ## 😊Thanks for
 
@@ -765,6 +781,9 @@ your model with third-party UIs, such as fastgpt, OpenWebUI, etc.
 
 <a href="https://github.com/chuanzhubin"><b>@chuanzhubin</b></a>:
 <a href="https://github.com/jingyaogong/minimind/pull/34">🔗Code line by line comments (Chinese)</a>
+
+<a href="https://github.com/WangRongsheng"><b>@WangRongsheng</b></a>:
+<a href="https://github.com/jingyaogong/minimind/issues/39">🔗Preprocessing of large datasets</a>
 
 <details close> 
 <summary> <b>Reference Links & Acknowledgments to the Following Excellent Papers or Projects</b> </summary>

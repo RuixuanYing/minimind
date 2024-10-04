@@ -1,3 +1,5 @@
+import csv
+import itertools
 import re
 import json
 import jsonlines
@@ -12,96 +14,30 @@ bos_token = "<s>"
 eos_token = "</s>"
 
 
-# pretrain
-def process_wiki_clean():
-    with open('./dataset/clean-wikipedia-cn.json', 'r', encoding='utf-8') as f_read:
-        data = [ujson.loads(line) for line in f_read]
-    data_len = len(data)
-    doc_ids = []
-    for idx, line in enumerate(data):
-        text = line['response']
-        text_id = tokenizer(f'{bos_token}{text}{eos_token}').data['input_ids']
-        if len(text_id) > 5:
-            doc_ids += text_id
-        if idx % (int(data_len / 20)) == 0:
-            print(f"[{idx}/{data_len}] {text}")
-    arr = np.array(doc_ids, dtype=np.uint16)
-    with open('./dataset/clean-wikipedia-cn.bin', 'wb') as f:
-        f.write(arr.tobytes())
+def pretrain_process(chunk_size=50000):
+    chunk_idx = 0
 
-
-# pretrain
-def process_other():
-    data = []
-
-    with open('./dataset/alpaca_gpt4_data_zh.json', 'r', encoding='utf-8') as f:
-        data_ = json.load(f)
-        data += data_
-
-    with open('./dataset/alpaca_data_zh_51k.json', 'r', encoding='utf-8') as f:
-        data_ = json.load(f)
-        data += data_
-
-    doc_ids = []
-    for idx, per in enumerate(data):
-        q = per['instruction']
-        i = per['input']
-        a = per['output']
-        q = q + i
-        if len(q) < 10 or len(a) < 5:
-            continue
-        if len(q) > 256 or len(a) > 256:
-            continue
-        text_id = tokenizer(f'{bos_token}{q}，{a}{eos_token}').data['input_ids']
-        if len(text_id) > 5:
-            doc_ids += text_id
-        if idx % 50000 == 0:
-            print(idx, len(data))
-
-    arr = np.array(doc_ids, dtype=np.uint16)
-    with open('./dataset/clean_other.bin', 'wb') as f:
-        f.write(arr.tobytes())
-
-
-# pretrain
-def process_seq_monkey():
-    doc_ids = []
     with jsonlines.open('./dataset/mobvoi_seq_monkey_general_open_corpus.jsonl') as reader:
-        for idx, obj in enumerate(reader):
-            try:
-                content = obj.get('text', '')
-                if len(content) > 512:
-                    continue
-                text_id = tokenizer(f'{bos_token}{content}{eos_token}').data['input_ids']
-                doc_ids += text_id
-                if idx % 50000 == 0:
-                    print(f"seq_monkey: [{idx}]")
-            except UnicodeDecodeError as e:
-                print(f"Skipping invalid line {idx + 1}: {e}")
-                continue
+        with open('./dataset/pretrain_data.csv', 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['text'])
 
-    arr = np.array(doc_ids, dtype=np.uint16)
-    with open('./dataset/clean_seq_monkey.bin', 'wb') as f:
-        f.write(arr.tobytes())
+            while True:
+                chunk = list(itertools.islice(reader, chunk_size))
+                if not chunk:
+                    break
 
-
-def pretrain_process():
-    # process_wiki_clean()
-    process_seq_monkey()
-
-    data_path_list = [
-        # './dataset/clean-wikipedia-cn.bin',
-        './dataset/clean_seq_monkey.bin'
-    ]
-    data_lst = []
-    for data_path in data_path_list:
-        with open(data_path, 'rb') as f:
-            data = np.fromfile(f, dtype=np.uint16)
-            data_lst.append(data)
-    arr = np.concatenate(data_lst)
-    print(arr.shape)
-    with open('./dataset/pretrain_data.bin', 'wb') as f:
-        f.write(arr.tobytes())
+                for idx, obj in enumerate(chunk):
+                    try:
+                        content = obj.get('text', '')
+                        if len(content) > 512:
+                            continue
+                        writer.writerow([content])
+                    except UnicodeDecodeError as e:
+                        print(f"Skipping invalid line {chunk_idx * chunk_size + idx + 1}: {e}")
+                        continue
+                chunk_idx += 1
+                print('chunk:', ((chunk_idx - 1) * chunk_size, chunk_idx * chunk_size), 'process end')
 
 
 def sft_process(contain_history=False):
@@ -147,9 +83,9 @@ def sft_process(contain_history=False):
     with open(f'./dataset/{file_name}', 'w', encoding='utf-8') as f:
         f.write('history,q,a\n')
 
-    sft_datasets = ['./dataset/sft_data_zh_2.jsonl']
+    sft_datasets = ['./dataset/sft_data_zh.jsonl']
     if not contain_history:
-        sft_datasets = ['./dataset/sft_data_zh_2.jsonl']
+        sft_datasets = ['./dataset/sft_data_zh.jsonl']
 
     for path in sft_datasets:
         with jsonlines.open(path) as reader:
@@ -179,7 +115,7 @@ def rl_process():
     ################
 
     dataset_path = ['./dataset/dpo/dpo_zh_demo.json',
-                    './dataset/dpo/train_1.json',
+                    './dataset/dpo/train_data.json',
                     './dataset/dpo/huozi_rlhf_data.json', ]
 
     train_dataset = load_dataset('json', data_files=dataset_path)
@@ -212,6 +148,6 @@ if __name__ == "__main__":
     if process_type == 1:
         pretrain_process()
     if process_type == 2:
-        sft_process(contain_history=True)
+        sft_process(contain_history=False)
     if process_type == 3:
         rl_process()
